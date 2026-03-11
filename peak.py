@@ -5,11 +5,13 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    mountains = ['Everest', 'K2', 'Kilimanjaro', 'Denali', 'Elbrus', 'Aconcagua', 'Vinson', 'Puncak Jaya', 'Mount Kosciuszko', 'Mont Blanc']
+    mountains = ['Everest', 'K2', 'Kilimanjaro', 'Denali', 'Elbrus', 'Aconcagua', 'Vinson', 'Puncak Jaya', 'Mount Kosciuszko', 'Mont Blanc', 'Julka']
     return render_template('index.html', mountain=mountains)
 
 @app.route('/mountain/<mt>')
 def mountain(mt):
+    if mt == 'Julka':
+        return 'jest super'
     return "This is " + str(mt)
 
 if __name__ == "__main__":
