@@ -1,10 +1,821 @@
-<html>
-    <body>
-        <h1>Let's go climb a mountain!</h1>
-	<ul>
-        {% for mt in mountain %}
-	<li><a href="/mountain/{{ mt }}">{{ mt }}</a></li>
-        {% endfor %}
-        </ul>
-    </body>
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CS2 Prime Compare</title>
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap");
+
+        :root {
+            --bg: #08141b;
+            --panel: rgba(10, 21, 30, 0.92);
+            --panel-strong: rgba(14, 30, 40, 0.95);
+            --panel-soft: rgba(255, 255, 255, 0.03);
+            --panel-border: rgba(124, 171, 191, 0.16);
+            --text: #eff6f7;
+            --muted: #8fa8b5;
+            --accent: #6ce5c2;
+            --accent-2: #f8b84e;
+            --danger: #ff7b6b;
+            --shadow: 0 24px 64px rgba(1, 7, 11, 0.38);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--text);
+            font-family: "Manrope", sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(248, 184, 78, 0.16), transparent 34%),
+                radial-gradient(circle at top right, rgba(108, 229, 194, 0.18), transparent 24%),
+                linear-gradient(160deg, #061018 0%, #0b1a22 52%, #07131a 100%);
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 42px 42px;
+            mask-image: radial-gradient(circle at center, black, transparent 80%);
+            pointer-events: none;
+        }
+
+        .shell {
+            width: min(1440px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 34px 0 64px;
+        }
+
+        .hero,
+        .control-panel,
+        .compare-panel,
+        .player-card,
+        .error-state,
+        .empty-state {
+            border: 1px solid var(--panel-border);
+            border-radius: 28px;
+            background: linear-gradient(180deg, rgba(12, 24, 33, 0.95), rgba(9, 17, 24, 0.92));
+            box-shadow: var(--shadow);
+        }
+
+        .hero {
+            position: relative;
+            overflow: hidden;
+            display: grid;
+            gap: 18px;
+            margin-bottom: 24px;
+            padding: 28px;
+        }
+
+        .hero::after {
+            content: "";
+            position: absolute;
+            inset: auto -10% -55% 35%;
+            height: 240px;
+            background: radial-gradient(circle, rgba(108, 229, 194, 0.18), transparent 62%);
+            pointer-events: none;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            width: fit-content;
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(108, 229, 194, 0.24);
+            color: var(--accent);
+            background: rgba(108, 229, 194, 0.08);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+
+        h1, h2, h3 {
+            margin: 0;
+        }
+
+        h1 {
+            max-width: 10ch;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: clamp(2.3rem, 5vw, 4.8rem);
+            line-height: 0.94;
+            letter-spacing: -0.05em;
+        }
+
+        .hero-copy,
+        .control-copy,
+        .section-copy,
+        .player-meta,
+        .helper-text,
+        .panel-copy {
+            color: #d4e1e7;
+            line-height: 1.7;
+        }
+
+        .hero-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .hero-meta span,
+        .mini-stat,
+        .summary-tile,
+        .stat-tile,
+        .input-row,
+        .note-box {
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: var(--panel-soft);
+        }
+
+        .hero-meta span {
+            padding: 10px 14px;
+            border-radius: 16px;
+        }
+
+        .control-panel,
+        .compare-panel {
+            margin-bottom: 24px;
+            padding: 22px;
+        }
+
+        .control-header,
+        .toolbar,
+        .player-header,
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .slots-picker {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--muted);
+        }
+
+        .slots-picker select,
+        .player-input {
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            background: rgba(4, 11, 16, 0.82);
+            color: var(--text);
+            font: inherit;
+        }
+
+        .slots-picker select {
+            min-width: 92px;
+            padding: 10px 12px;
+        }
+
+        .compare-form {
+            display: grid;
+            gap: 14px;
+            margin-top: 18px;
+        }
+
+        .inputs-grid {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+
+        .input-row {
+            display: grid;
+            gap: 10px;
+            padding: 14px;
+            border-radius: 18px;
+        }
+
+        .input-row.is-hidden {
+            display: none;
+        }
+
+        .input-row label,
+        .label {
+            color: var(--muted);
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .player-input {
+            padding: 14px 16px;
+        }
+
+        .form-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .button {
+            border: 0;
+            border-radius: 14px;
+            padding: 14px 18px;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform 160ms ease, opacity 160ms ease, background 160ms ease;
+        }
+
+        .button:hover {
+            transform: translateY(-1px);
+        }
+
+        .button-primary {
+            color: #041015;
+            background: linear-gradient(135deg, var(--accent), #8bf0d5);
+        }
+
+        .button-secondary {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .toolbar {
+            margin-bottom: 18px;
+        }
+
+        .window-switcher {
+            display: inline-flex;
+            gap: 8px;
+            padding: 8px;
+            border-radius: 18px;
+            border: 1px solid var(--panel-border);
+            background: rgba(7, 16, 24, 0.72);
+            backdrop-filter: blur(14px);
+        }
+
+        .window-button {
+            border: 0;
+            padding: 12px 18px;
+            border-radius: 12px;
+            color: var(--muted);
+            background: transparent;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .window-button.is-active {
+            color: #041015;
+            background: linear-gradient(135deg, var(--accent), #8bf0d5);
+        }
+
+        .window-panel {
+            display: none;
+        }
+
+        .window-panel.is-active {
+            display: block;
+        }
+
+        .compare-table-wrap {
+            overflow-x: auto;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(4, 11, 16, 0.72);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 760px;
+        }
+
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        th {
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        td:first-child {
+            width: 220px;
+            color: var(--muted);
+            font-weight: 700;
+        }
+
+        .players-grid {
+            display: grid;
+            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+
+        .player-card {
+            display: grid;
+            gap: 18px;
+            padding: 20px;
+        }
+
+        .player-header h3 {
+            font-size: 1.35rem;
+        }
+
+        .rank-pill {
+            min-width: 92px;
+            padding: 10px 14px;
+            border-radius: 16px;
+            text-align: right;
+            color: #ffd488;
+            border: 1px solid rgba(248, 184, 78, 0.22);
+            background: linear-gradient(135deg, rgba(248, 184, 78, 0.2), rgba(248, 184, 78, 0.08));
+        }
+
+        .rank-pill strong {
+            display: block;
+            margin-top: 6px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 1.25rem;
+            line-height: 1;
+        }
+
+        .mini-grid,
+        .summary-grid,
+        .stats-grid,
+        .matches-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .mini-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .mini-stat,
+        .summary-tile,
+        .stat-tile {
+            padding: 14px;
+            border-radius: 18px;
+        }
+
+        .mini-stat strong,
+        .summary-tile strong,
+        .stat-tile strong {
+            display: block;
+            margin-top: 8px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 1.08rem;
+            line-height: 1.1;
+        }
+
+        .match-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) auto auto;
+            gap: 12px;
+            align-items: center;
+            padding: 14px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .match-row strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .match-row small,
+        .match-stats {
+            color: var(--muted);
+        }
+
+        .match-result {
+            padding: 8px 10px;
+            border-radius: 999px;
+            font-size: 0.76rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .match-result.win {
+            color: #032118;
+            background: rgba(108, 229, 194, 0.95);
+        }
+
+        .match-result.loss {
+            color: #2f0c05;
+            background: rgba(255, 123, 107, 0.9);
+        }
+
+        .match-result.tie,
+        .match-result.unknown {
+            color: #2d2408;
+            background: rgba(248, 184, 78, 0.9);
+        }
+
+        .match-stats {
+            text-align: right;
+            font-size: 0.86rem;
+        }
+
+        .error-state,
+        .empty-state {
+            padding: 24px;
+        }
+
+        .error-state {
+            border-color: rgba(255, 123, 107, 0.24);
+            background: rgba(43, 14, 14, 0.38);
+        }
+
+        .note-box {
+            margin-top: 14px;
+            padding: 14px 16px;
+            border-radius: 18px;
+            color: var(--muted);
+        }
+
+        @media (max-width: 980px) {
+            .stats-grid,
+            .mini-grid,
+            .summary-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .match-row {
+                grid-template-columns: 1fr;
+            }
+
+            .match-stats {
+                text-align: left;
+            }
+        }
+
+        @media (max-width: 680px) {
+            .shell {
+                width: min(100% - 20px, 1440px);
+                padding-top: 20px;
+            }
+
+            .hero,
+            .control-panel,
+            .compare-panel,
+            .player-card {
+                padding: 18px;
+                border-radius: 22px;
+            }
+
+            .control-header,
+            .toolbar,
+            .player-header,
+            .panel-header {
+                display: grid;
+            }
+
+            .stats-grid,
+            .mini-grid,
+            .summary-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <section class="hero">
+            <span class="eyebrow">Valve Matchmaking</span>
+            <h1>CS2 Prime Compare</h1>
+            <p class="hero-copy">
+                Porownuj jednoczesnie 2, 3, 4 albo 5 graczy. Wklej Steam64 ID, Leetify user ID
+                albo link do publicznego profilu Leetify, a dashboard policzy agregaty z ostatnich
+                10, 20 i 50 oficjalnych meczow 5v5.
+            </p>
+            <div class="hero-meta">
+                <span>Porownywanych graczy: {{ players|length }}</span>
+                <span>Poprawnie zaladowanych: {{ valid_players_count }}</span>
+                <span>Generowano: {{ generated_at }}</span>
+            </div>
+        </section>
+
+        <section class="control-panel">
+            <div class="control-header">
+                <div>
+                    <h2>Wybierz graczy</h2>
+                    <p class="control-copy">
+                        Nick Steam nie jest wspierany przez publiczne API Leetify, dlatego najlepiej
+                        wklejac Steam64 ID albo link do profilu.
+                    </p>
+                </div>
+                <div class="slots-picker">
+                    <label for="slotCount">Liczba slotow</label>
+                    <select id="slotCount" name="slots" form="compareForm">
+                        {% for option in range(min_compare_players, max_compare_players + 1) %}
+                        <option value="{{ option }}"{% if option == slots_count %} selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <form id="compareForm" class="compare-form" method="get" action="/">
+                <div class="inputs-grid">
+                    {% for slot in input_slots %}
+                    <div class="input-row{% if not slot.visible %} is-hidden{% endif %}" data-player-slot="{{ slot.index }}">
+                        <label for="player-{{ slot.index }}">Gracz {{ slot.index }}</label>
+                        <input
+                            id="player-{{ slot.index }}"
+                            class="player-input"
+                            type="text"
+                            name="player"
+                            value="{{ slot.value }}"
+                            placeholder="Steam64 ID, Leetify ID albo link do profilu"
+                            autocomplete="off"
+                        >
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="form-actions">
+                    <button class="button button-primary" type="submit">Porownaj graczy</button>
+                    <a class="button button-secondary" href="/">Wyczysc</a>
+                </div>
+            </form>
+
+            <div class="note-box">
+                Przyklady: <code>76561198077255766</code>,
+                <code>32991aa5-7ef9-4912-96a5-cc0957b29db1</code>,
+                <code>https://leetify.com/public/profile/76561198077255766</code>
+            </div>
+        </section>
+
+        <section class="toolbar">
+            <div>
+                <h2>Porownanie</h2>
+                <p class="section-copy">Przelacz zakres i porownaj te same metryki dla wszystkich graczy obok siebie.</p>
+            </div>
+            <div class="window-switcher" aria-label="Zakres meczow">
+                {% for window in windows %}
+                <button
+                    class="window-button{% if window == default_window %} is-active{% endif %}"
+                    type="button"
+                    data-window-button="{{ window }}"
+                >
+                    Ostatnie {{ window }}
+                </button>
+                {% endfor %}
+            </div>
+        </section>
+
+        {% if players %}
+        {% if comparison_players %}
+        <section class="compare-panel">
+            {% for window in windows %}
+            <div class="window-panel{% if window == default_window %} is-active{% endif %}" data-window-panel="{{ window }}">
+                <div class="panel-header">
+                    <div>
+                        <h3>Tabela porownawcza: ostatnie {{ window }} meczow</h3>
+                        <p class="panel-copy">Kazda kolumna to jeden gracz, kazdy wiersz to ta sama metryka.</p>
+                    </div>
+                </div>
+                <div class="compare-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Metryka</th>
+                                {% for player in comparison_players %}
+                                <th>{{ player.name }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in comparison_rows[window] %}
+                            <tr>
+                                <td>{{ row["label"] }}</td>
+                                {% for value in row["values"] %}
+                                <td>{{ value }}</td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+        </section>
+        {% else %}
+        <section class="empty-state" style="margin-bottom: 24px;">
+            <h2>Brak poprawnych danych do porownania</h2>
+            <p class="helper-text">
+                Publiczne API Leetify nie znalazlo zadnego z wpisanych graczy. Sprawdz Steam64,
+                upewnij sie ze konto istnieje w Leetify i ma publiczny profil.
+            </p>
+        </section>
+        {% endif %}
+
+        <section class="players-grid">
+            {% for player in players %}
+                {% if player.error %}
+                <article class="error-state">
+                    <h3>{{ player.name }}</h3>
+                    <p class="helper-text">{{ player.error }}</p>
+                    <div class="note-box" style="margin-top: 16px;">
+                        Wprowadzona wartosc: <code>{{ player.input_value }}</code>
+                    </div>
+                </article>
+                {% else %}
+                <article class="player-card">
+                    <header class="player-header">
+                        <div>
+                            <h3>{{ player.name }}</h3>
+                            <p class="player-meta">
+                                Steam64: {{ player.steam64_id }}<br>
+                                Prywatnosc API: {{ player.privacy_mode }}
+                            </p>
+                        </div>
+                        <div class="rank-pill">
+                            <span class="label">Premier</span>
+                            <strong>{{ player.premier_rank if player.premier_rank else "-" }}</strong>
+                        </div>
+                    </header>
+
+                    <section class="mini-grid">
+                        <div class="mini-stat">
+                            <span class="label">Leetify Rank</span>
+                            <strong>{{ player.leetify_rank if player.leetify_rank is not none else "-" }}</strong>
+                        </div>
+                        <div class="mini-stat">
+                            <span class="label">Winrate Profilu</span>
+                            <strong>{{ player.profile_winrate }}</strong>
+                        </div>
+                        <div class="mini-stat">
+                            <span class="label">Mecze 5v5</span>
+                            <strong>{{ player.matches_count }}</strong>
+                        </div>
+                    </section>
+
+                    {% for window in windows %}
+                    {% set summary = player.summaries[window] %}
+                    <section class="window-panel{% if window == default_window %} is-active{% endif %}" data-window-panel="{{ window }}">
+                        <div class="panel-header">
+                            <h3>Agregat z ostatnich {{ window }} meczow</h3>
+                            <span class="helper-text">Uwzgledniono: {{ summary.played }}</span>
+                        </div>
+
+                        <div class="summary-grid">
+                            <div class="summary-tile">
+                                <span class="label">Winrate</span>
+                                <strong>{{ summary.winrate }}</strong>
+                            </div>
+                            <div class="summary-tile">
+                                <span class="label">Bilans W-L-T</span>
+                                <strong>{{ summary.record }}</strong>
+                            </div>
+                        </div>
+
+                        <div class="stats-grid">
+                            <div class="stat-tile">
+                                <span class="label">AVG K / D / A</span>
+                                <strong>{{ summary.kda }}</strong>
+                            </div>
+                            <div class="stat-tile">
+                                <span class="label">AVG K/D</span>
+                                <strong>{{ summary.kd }}</strong>
+                            </div>
+                            <div class="stat-tile">
+                                <span class="label">AVG ADR</span>
+                                <strong>{{ summary.adr }}</strong>
+                            </div>
+                            <div class="stat-tile">
+                                <span class="label">AVG HS%</span>
+                                <strong>{{ summary.hs }}</strong>
+                            </div>
+                            <div class="stat-tile">
+                                <span class="label">AVG Rating</span>
+                                <strong>{{ summary.rating }}</strong>
+                            </div>
+                            <div class="stat-tile">
+                                <span class="label">AVG Preaim</span>
+                                <strong>{{ summary.preaim }}</strong>
+                            </div>
+                            <div class="stat-tile">
+                                <span class="label">AVG Reaction</span>
+                                <strong>{{ summary.reaction }}</strong>
+                            </div>
+                            <div class="stat-tile">
+                                <span class="label">Pierwszy Mecz</span>
+                                <strong>{{ player.first_match_date }}</strong>
+                            </div>
+                            <div class="stat-tile">
+                                <span class="label">Wszystkie Mecze API</span>
+                                <strong>{{ player.total_matches }}</strong>
+                            </div>
+                        </div>
+                    </section>
+                    {% endfor %}
+
+                    <section class="matches-list">
+                        <div class="panel-header">
+                            <h3>Ostatnie 5 meczow</h3>
+                            <span class="helper-text">Podglad szczegolow niezalezny od zakresu 10/20/50.</span>
+                        </div>
+
+                        {% if player.latest_matches %}
+                            {% for match in player.latest_matches %}
+                            <div class="match-row">
+                                <div>
+                                    <strong>{{ match.map_label }}</strong>
+                                    <small>{{ match.data_source_label }} - {{ match.finished_at_display }}</small>
+                                </div>
+                                <span class="match-result {{ match.outcome }}">{{ match.outcome }}</span>
+                                <div class="match-stats">
+                                    <strong>{{ match.scoreline }}</strong>
+                                    <div>{{ match.kills }}/{{ match.deaths }}/{{ match.assists }} - ADR {{ match.adr if match.adr is not none else "-" }}</div>
+                                    <div>Rating {{ match.leetify_rating if match.leetify_rating is not none else "-" }} - HS {{ match.hs_percentage if match.hs_percentage is not none else "-" }}%</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="match-row">
+                                <div>
+                                    <strong>Brak meczow</strong>
+                                    <small>Ten gracz nie ma jeszcze publicznych meczow w wybranym filtrze.</small>
+                                </div>
+                                <span class="match-result unknown">empty</span>
+                                <div class="match-stats">
+                                    <strong>-</strong>
+                                    <div>-</div>
+                                    <div>-</div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </section>
+                </article>
+                {% endif %}
+            {% endfor %}
+        </section>
+        {% else %}
+        <section class="empty-state">
+            <h2>Brak graczy do porownania</h2>
+            <p class="helper-text">Wprowadz co najmniej jeden identyfikator, a dashboard pobierze dane z publicznego API Leetify.</p>
+        </section>
+        {% endif %}
+    </main>
+
+    <script>
+        const buttons = document.querySelectorAll("[data-window-button]");
+        const panels = document.querySelectorAll("[data-window-panel]");
+        const slotCount = document.getElementById("slotCount");
+        const playerSlots = document.querySelectorAll("[data-player-slot]");
+
+        function setWindow(windowSize) {
+            buttons.forEach((button) => {
+                button.classList.toggle("is-active", button.dataset.windowButton === windowSize);
+            });
+
+            panels.forEach((panel) => {
+                panel.classList.toggle("is-active", panel.dataset.windowPanel === windowSize);
+            });
+        }
+
+        function setVisibleSlots(count) {
+            playerSlots.forEach((slot) => {
+                const slotNumber = Number(slot.dataset.playerSlot);
+                slot.classList.toggle("is-hidden", slotNumber > count);
+            });
+        }
+
+        buttons.forEach((button) => {
+            button.addEventListener("click", () => setWindow(button.dataset.windowButton));
+        });
+
+        if (slotCount) {
+            slotCount.addEventListener("change", () => {
+                setVisibleSlots(Number(slotCount.value));
+            });
+            setVisibleSlots(Number(slotCount.value));
+        }
+    </script>
+</body>
 </html>
